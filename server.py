@@ -13,9 +13,9 @@ class Group:
         self.data = data
         self.relation = relation
 
-    def run(self, sock_udp):
+    def run(self, sock_udp, sock_tcp):
         self.sock_udp = sock_udp
-
+        self.sock_tcp = sock_tcp
         relations = len(self.relation)
 
         # Receive/respond loop (bulca)
@@ -39,18 +39,23 @@ class Group:
             sock_udp.sendto(json_obj)
 
         # creare socket TCP
-        sock_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock_tcp.connect(self.ip_tcp, self.port_tcp)
+        self.sock_tcp.connect(self.ip_tcp, self.port_tcp)
 
         while True:
-            clientsocket, addr = sock_tcp.accept()
-            info = sock_tcp.recv(1024)
+            clientsocket, addr = self.sock_tcp.accept()
+            info = self.sock_tcp.recv(1024)
             if info:
                 print(info)
             else:
                 clientsocket.close()
 
 
+# date utilizate pentru TCP
+sock_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+
+
+# date utilizate pentru UDP
 ip = '224.3.0.64'
 port = 10000
 # Facem socketul
@@ -65,4 +70,4 @@ sock_udp.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
 
 
 node1 = Group('224.3.0.64', 10000, '127.0.0.1', '9991', 'node1', [('127.0.0.1', '9992'), ('127.0.0.3', '9993')])
-node1.run(sock_udp)
+node1.run(sock_udp, sock_tcp)
