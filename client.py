@@ -1,40 +1,66 @@
 import socket
 import struct
 import sys
+import json
 
-message = 'very important data'
+message = 'Clientul cere informatie'
 message = str.encode(message)
 multicast_group = ('224.3.29.71', 10000)
 
-# Create the datagram socket
+# Se creaza datagram socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-# Set a timeout so the socket does not block indefinitely when trying
-# to receive data.
-sock.settimeout(50.2)
+# Setare timp pentru mesaje
+sock.settimeout(2)
 
-# Set the time-to-live for messages to 1 so they do not go past the
-# local network segment.
+# Setare timp pentru viata mesajelor 1 astfel încât acestea să nu mearg dincolo de segmentul de rețea locală.
 ttl = struct.pack('b', 1)
 sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, ttl)
 
-try:
+# datele pentru tratarea celui mai important nod cu tcp
+i = 0
+rel = []
+ip = []
+port = []
 
-    # Send data to the multicast group
+while i < 6:
+
+    # Trimite date la grupul multicast
     print(sys.stderr, 'sending "%s"' % message)
     sent = sock.sendto(message, multicast_group)
 
-    # Look for responses from all recipients
-    while True:
+    # Cautare raspunsuri de la destinatari
+    while i < 6:
         print(sys.stderr, 'waiting to receive')
         try:
-            data, server = sock.recvfrom(1024)
+            # se primeste segmentul de date si se citeste din json
+            data = sock.recvfrom(2048)
+            data = json.loads(data.decode('utf-8'))
+            relations = data.get('relations')
+            ip_tcp = data.get('ip_tcp')
+            port_tcp = data.get('port_tcp')
+
         except socket.timeout:
             print(sys.stderr, 'timed out, no more responses')
             break
         else:
-            print(sys.stderr, 'received "%s" from %s' % (data, server))
+            print(sys.stderr, '1 nod are %s legaturi, ip-ul: %s si portul: %s' % (relations, ip_tcp, port_tcp))
+            rel.append(relations)
+            ip.append(ip_tcp)
+            port.append(port_tcp)
 
-finally:
-    print(sys.stderr, 'closing socket')
-    sock.close()
+print(sys.stderr, 'closing socket')
+sock.close()
+
+# cautam nodul cu cele mai multe relatii
+pozitia = rel.index(max(rel))
+sock_TCP = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock_TCP.bind(ip[pozitia], port[pozitia])
+sock_TCP.listen(10)
+
+while True:
+
+    datas = sock_TCP.recv(1024)
+    datas = datas.decode('utf-8')
+    print(datas)
+
