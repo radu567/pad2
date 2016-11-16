@@ -13,16 +13,8 @@ class Group:
         self.data = data
         self.relation = relation
 
-    def run(self):
-
-        # Facem socketul
-        sock_udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock_udp.bind((self.ip_multicast, self.port_multicast))
-
-        # Adaugam sistemul la grupul multicast in toate interfetele
-        group = socket.inet_aton(self.ip_multicast)
-        mreq = struct.pack('4sL', group, socket.INADDR_ANY)
-        sock_udp.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+    def run(self, sock_udp):
+        self.sock_udp = sock_udp
 
         relations = len(self.relation)
 
@@ -58,5 +50,19 @@ class Group:
             else:
                 clientsocket.close()
 
+
+ip = '224.3.0.64'
+port = 10000
+# Facem socketul
+sock_udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+sock_udp.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+sock_udp.bind((ip, port))
+
+# Adaugam sistemul la grupul multicast in toate interfetele
+group = socket.inet_aton(ip)
+mreq = struct.pack('4sL', group, socket.INADDR_ANY)
+sock_udp.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+
+
 node1 = Group('224.3.0.64', 10000, '127.0.0.1', '9991', 'node1', [('127.0.0.1', '9992'), ('127.0.0.3', '9993')])
-node1.run()
+node1.run(sock_udp)
