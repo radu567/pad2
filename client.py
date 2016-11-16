@@ -56,11 +56,10 @@ sock.close()
 pozitia = rel.index(max(rel))
 sock_TCP = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock_TCP.bind(ip[pozitia], port[pozitia])
-sock_TCP.listen(10)
+sock_TCP.listen(5)
 
 while True:
 
     datas = sock_TCP.recv(1024)
     datas = datas.decode('utf-8')
     print(datas)
-
