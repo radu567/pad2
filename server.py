@@ -2,27 +2,40 @@ import socket
 import struct
 import sys
 import json
+import collections
+import queue
 
+MESSAGE_TYPE = collections.namedtuple('MessageType', ('client', 'node'))(*('client', 'node'))
+lista_date = queue.Queue()
 
-class Group:
-    def __init__(self, ip_multicast, port_multicast, ip_tcp, port_tcp, data, relation):
+class Nod:
+    def __init__(self, ip_multicast, server_multicast, ip_tcp, port_tcp, data, relation):
         self.ip_multicast = ip_multicast
-        self.port_multicast = port_multicast
+        self.server_multicast = server_multicast
         self.ip_tcp = ip_tcp
         self.port_tcp = port_tcp
         self.data = data
         self.relation = relation
 
-    def run(self, sock_udp, sock_tcp):
-        self.sock_udp = sock_udp
-        self.sock_tcp = sock_tcp
-        relations = len(self.relation)
+    def listen_udp(self):
+        # Facem socketul
+        sock_udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-        # Receive/respond loop (bulca)
+        # Se leaga cu adresa serverului
+        sock_udp.bind(self.server_multicast)
+
+        # Adaugam sistemul la grupul multicast in toate interfetele
+
+        group = socket.inet_aton(self.ip_multicast)
+        mreq = struct.pack('4sL', group, socket.INADDR_ANY)
+        sock_udp.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+
+        relations = len(self.relation)
 
         while True:
             print("Astepare conexiuni")
             data, address = sock_udp.recvfrom(1024)
+            data = data.decode('utf-8')
             # sys.stderr - Fluxul standart de erori.
             print(sys.stderr, 'primiti %s bytes mesaj de la %s' % (len(data), address))
             print(sys.stderr, data)
@@ -36,38 +49,43 @@ class Group:
                 'port_tcp': self.port_tcp
             }
             json_obj = json.dumps(data).encode('utf-8')
-            sock_udp.sendto(json_obj)
+            print('datele mele sunt:', data)
 
-        # creare socket TCP
-        self.sock_tcp.connect(self.ip_tcp, self.port_tcp)
+            sock_udp.sendto(json_obj, address)
+        # sfirsit conexiune udp
+
+    def listen_tcp(self):
+
+        # creare socket TCP ....... date utilizate pentru TCP
+        sock_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock_tcp.connect(self.ip_tcp, self.port_tcp)
 
         while True:
-            clientsocket, addr = self.sock_tcp.accept()
-            info = self.sock_tcp.recv(1024)
-            if info:
-                print(info)
+            clientsocket, addr = sock_tcp.accept()
+            data = sock_tcp.recv(1024)
+            data = json.loads(data.decode('utf-8'))
+            type = data.get('type')
+
+            if type == MESSAGE_TYPE.node:
+                info = self.data.encode('utf-8')
+                sock_tcp.send(info)
+            if type == MESSAGE_TYPE.client:
+                cerere = {
+                    'type': 'node',
+                    'message': ''
+                }
+                jsonobj = json.dumps(cerere).encode('utf-8')
+                sock_tcp.send(jsonobj)
+
+                raspuns = sock_tcp.recv(1024)
+                raspuns = raspuns.decode('utf-8')
+
+                lista_date.put(raspuns)
+
+
             else:
                 clientsocket.close()
 
 
-# date utilizate pentru TCP
-sock_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-
-
-# date utilizate pentru UDP
-ip = '224.3.0.64'
-port = 10000
-# Facem socketul
-sock_udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-sock_udp.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-sock_udp.bind((ip, port))
-
-# Adaugam sistemul la grupul multicast in toate interfetele
-group = socket.inet_aton(ip)
-mreq = struct.pack('4sL', group, socket.INADDR_ANY)
-sock_udp.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
-
-
-node1 = Group('224.3.0.64', 10000, '127.0.0.1', '9991', 'node1', [('127.0.0.1', '9992'), ('127.0.0.3', '9993')])
-node1.run(sock_udp, sock_tcp)
+node1 = Nod('224.3.29.71', ('', 10000), '127.0.0.1', '9991', 'node1', [('127.0.0.1', '9992'), ('127.0.0.3', '9993')])
+node1.listen_udp()
