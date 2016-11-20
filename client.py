@@ -46,6 +46,7 @@ while i < 6:
         rel.append(relations)
         ip.append(ip_tcp)
         port.append(port_tcp)
+        i += 1
 
 print(sys.stderr, 'closing socket')
 sock.close()
@@ -53,12 +54,14 @@ sock.close()
 # cautam nodul cu cele mai multe relatii
 pozitia = rel.index(max(rel))
 print(ip[pozitia])
+port_conectare = int(port[pozitia])
+
 sock_TCP = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-sock_TCP.bind(ip[pozitia], port[pozitia])
-sock_TCP.listen(5)
+sock_TCP.connect((ip[pozitia], port_conectare))
+# sock_TCP.listen(5)
 
 while True:
-# mesajul de cerere
+    # mesajul de cerere
     cerere = {
         'type': 'client',
         'message': ''
@@ -69,3 +72,4 @@ while True:
     datas = sock_TCP.recv(1024)
     datas = datas.decode('utf-8')
     print(datas)
+sock_TCP.close()
