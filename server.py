@@ -60,12 +60,14 @@ class Nod:
 
         # creare socket TCP ....... date utilizate pentru TCP
         sock_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock_tcp.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock_tcp.bind((self.ip_tcp, self.port_tcp))
+        sock_tcp.listen(6)
         print('socket tcp in functiune')
 
         while True:
-            clientsocket, addr = sock_tcp.accept()
-            data = sock_tcp.recv(1024)
+            (clientsocket, (ip, port)) = sock_tcp.accept()
+            data, abcd = sock_tcp.recv(2048)
             data = json.loads(data.decode('utf-8'))
             type = data.get('type')
 
