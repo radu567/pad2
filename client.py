@@ -42,7 +42,7 @@ while i < 6:
         print(sys.stderr, 'timed out, no more responses')
         break
     else:
-        print(sys.stderr, '1 nod are %s legaturi, ip-ul: %s si portul: %s' % (relations, ip_tcp, port_tcp))
+        print(sys.stderr, 'acest nod are %s legaturi, ip-ul: %s si portul: %s' % (relations, ip_tcp, port_tcp))
         rel.append(relations)
         ip.append(ip_tcp)
         port.append(port_tcp)
@@ -60,16 +60,22 @@ sock_TCP = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock_TCP.connect((ip[pozitia], port_conectare))
 # sock_TCP.listen(5)
 
-while True:
-    # mesajul de cerere
-    cerere = {
-        'type': 'client',
-        'message': ''
-        }
-    jsonobj = json.dumps(cerere).encode('utf-8')
-    sock_TCP.send(jsonobj)
+# efectuam cererea la nod
+cerere = {
+    'type': 'client',
+    'message': ''
+}
+jsonobj = json.dumps(cerere).encode('utf-8')
+sock_TCP.send(jsonobj)
 
-    datas = sock_TCP.recv(1024)
+datas = sock_TCP.recv(1024)
+
+
+while datas:
+    # mesajul de cerere
+
     datas = datas.decode('utf-8')
     print(datas)
+    datas = sock_TCP.recv(1024)
+
 sock_TCP.close()
