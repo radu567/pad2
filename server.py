@@ -6,6 +6,7 @@ import collections
 import queue
 import threading
 from threading import Thread
+from multiprocessing import Process
 
 
 MESSAGE_TYPE = collections.namedtuple('MessageType', ('client', 'node'))(*('client', 'node'))
@@ -138,4 +139,15 @@ node4 = Nod('224.3.29.71', ('', 10000), '127.0.0.4', 9994, 'node4', [])
 node5 = Nod('224.3.29.71', ('', 10000), '127.0.0.5', 9995, 'node5', [('127.0.0.2', 9992)])
 node6 = Nod('224.3.29.71', ('', 10000), '127.0.0.6', 9996, 'node6', [('127.0.0.1', 9991), ('127.0.0.2', 9992)])
 
-node6.listen_tcp()
+# node1.listen_udp()
+
+threads = [node1, node2, node3, node4, node5, node6]
+
+abc = 0
+lungime = len(threads)
+
+while abc < lungime:
+
+    threads[abc].listen_udp()
+    threads[abc].listen_tcp()
+    abc += abc
