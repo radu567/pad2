@@ -141,13 +141,18 @@ node6 = Nod('224.3.29.71', ('', 10000), '127.0.0.6', 9996, 'node6', [('127.0.0.1
 
 # node1.listen_udp()
 
-threads = [node1, node2, node3, node4, node5, node6]
+nodes = [node1, node2, node3, node4, node5, node6]
 
-abc = 0
-lungime = len(threads)
+threads = []
 
-while abc < lungime:
 
-    threads[abc].listen_udp()
-    threads[abc].listen_tcp()
-    abc += abc
+for node in nodes:
+    threads.append(Thread(target=Nod.listen_udp, args=()))
+    threads.append(Thread(target=Nod.listen_tcp, args=()))
+    #threads.append(Thread(target=Nod.listen_tcp))
+
+for thread in threads:
+    thread.start()
+
+for thread in threads:
+    thread.join()
