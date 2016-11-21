@@ -7,6 +7,7 @@ import queue
 import threading
 from threading import Thread
 
+
 MESSAGE_TYPE = collections.namedtuple('MessageType', ('client', 'node'))(*('client', 'node'))
 lista_date = queue.Queue()
 
@@ -22,6 +23,7 @@ class Nod:
     def listen_udp(self):
         # Facem socketul
         sock_udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock_udp.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
         # Se leaga cu adresa serverului
         sock_udp.bind(self.server_multicast)
@@ -62,18 +64,22 @@ class Nod:
         sock_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock_tcp.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock_tcp.bind((self.ip_tcp, self.port_tcp))
-        sock_tcp.listen(6)
-        print('socket tcp in functiune')
+
 
         while True:
-            (clientsocket, (ip, port)) = sock_tcp.accept()
-            data, abcd = sock_tcp.recv(2048)
+            sock_tcp.listen(6)
+
+            clientsocket, addr = sock_tcp.accept()
+            print('socket tcp in functiune')
+
+            data = clientsocket.recv(1024)
             data = json.loads(data.decode('utf-8'))
             type = data.get('type')
 
             if type == MESSAGE_TYPE.node:
                 info = self.data.encode('utf-8')
-                sock_tcp.send(info)
+                clientsocket.send(info)
+                print('am trimis nodului principal mesajul meu')
 
             if type == MESSAGE_TYPE.client:
                 # facem citirea de pe fiecare nod
@@ -81,11 +87,16 @@ class Nod:
                 relatii = len(self.relation)
                 lista_date.put(self.data)
 
+                # pentru testare adaugam scoaterea imediata din lista si trimiterea la client
+                m1 = lista_date.get()
+                # print(m)   # comentat de radu
+                clientsocket.send(m1.encode("utf-8"))
+
                 while i < relatii:
                     # preluam prima relatie pentru a ne conecta la acest nod
                     ip, port = self.relation[i]
                     sock_node = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    sock_node.connect(ip, port)
+                    sock_node.connect((ip, port))
                     # facem cererea la nod
                     cerere = {
                         'type': 'node',
@@ -98,30 +109,33 @@ class Nod:
                     raspuns = sock_node.recv(1024)
                     raspuns = raspuns.decode('utf-8')
                     # adaugam raspunsul in lista de date
+                    print('raspunsul primit de la vecin este : ', raspuns)
                     lista_date.put(raspuns)
                     sock_node.close()
                     i += 1
 
-                # atit timp cit avem date in lista le trimitem clientului
-                if lista_date:
+                    # atit timp cit avem date in lista le trimitem clientului
+                    # pentru testare trimitem mesajul primit de la nod imediat clientului
+                    #if lista_date:
+
                     m = lista_date.get()
                     # print(m)   # comentat de radu
-                    sock_tcp.send(m.encode("utf-8"))
+                    clientsocket.send(m.encode("utf-8"))
 
                 else:
-                    sock_tcp.send('Queue is empty')
+                    final = 'Queue is empty'
+                    final = final.encode('utf-8')
+                    clientsocket.send(final)
 
             else:
                 clientsocket.close()
 
 # initiem nodurile
-node1 = Nod('224.3.29.71', ('', 10000), '127.0.0.1', 9991, 'node1', [('127.0.0.2', '9992'), ('127.0.0.6', '9996')])
-node2 = Nod('224.3.29.71', ('', 10000), '127.0.0.2', 9992, 'node2', [('127.0.0.1', '9991'), ('127.0.0.3', '9993'), ('127.0.0.6', '9996'), ('127.0.0.5', '9995')])
-node3 = Nod('224.3.29.71', ('', 10000), '127.0.0.3', 9993, 'node3', [('127.0.0.2', '9992')])
+node1 = Nod('224.3.29.71', ('', 10000), '127.0.0.1', 9991, 'node1', [('127.0.0.2', 9992), ('127.0.0.6', 9996)])
+node2 = Nod('224.3.29.71', ('', 10000), '127.0.0.2', 9992, 'node2', [('127.0.0.1', 9991), ('127.0.0.3', 9993), ('127.0.0.6', 9996), ('127.0.0.5', 9995)])
+node3 = Nod('224.3.29.71', ('', 10000), '127.0.0.3', 9993, 'node3', [('127.0.0.2', 9992)])
 node4 = Nod('224.3.29.71', ('', 10000), '127.0.0.4', 9994, 'node4', [])
-node5 = Nod('224.3.29.71', ('', 10000), '127.0.0.5', 9995, 'node5', [('127.0.0.2', '9992')])
-node6 = Nod('224.3.29.71', ('', 10000), '127.0.0.6', 9996, 'node6', [('127.0.0.1', '9991'), ('127.0.0.2', '9992')])
+node5 = Nod('224.3.29.71', ('', 10000), '127.0.0.5', 9995, 'node5', [('127.0.0.2', 9992)])
+node6 = Nod('224.3.29.71', ('', 10000), '127.0.0.6', 9996, 'node6', [('127.0.0.1', 9991), ('127.0.0.2', 9992)])
 
-if __name__ == '__main__':
-    Thread(target=node1.listen_tcp()).start()
-    Thread(target=node1.listen_udp()).start()
+node6.listen_tcp()
