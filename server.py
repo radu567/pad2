@@ -10,10 +10,8 @@ from threading import Thread
 MESSAGE_TYPE = collections.namedtuple('MessageType', ('client', 'node'))(*('client', 'node'))
 lista_date = queue.Queue()
 
-# mostenirea vine de la object
 
-
-class Nod:
+class Nod(object):
     def __init__(self, ip_multicast, server_multicast, ip_tcp, port_tcp, data, relation):
         self.ip_multicast = ip_multicast
         self.server_multicast = server_multicast
@@ -21,8 +19,9 @@ class Nod:
         self.port_tcp = port_tcp
         self.data = data
         self.relation = relation
-        
-        
+
+        self.thread1 = Thread(target=self.listen_udp)
+        self.thread2 = Thread(target=self.listen_tcp)
 
     def listen_udp(self):
         # Facem socketul
@@ -133,6 +132,14 @@ class Nod:
             else:
                 clientsocket.close()
 
+    def run(self):
+        self.thread1.start()
+        self.thread2.start()
+
+    def stop(self):
+        self.thread1.join()
+        self.thread2.join()
+
 
 # initiem nodurile
 node1 = Nod('224.3.29.71', ('', 10000), '127.0.0.1', 9991, 'node1', [('127.0.0.2', 9992), ('127.0.0.6', 9996)])
@@ -145,14 +152,9 @@ node6 = Nod('224.3.29.71', ('', 10000), '127.0.0.6', 9996, 'node6', [('127.0.0.1
 
 nodes = [node1, node2, node3, node4, node5, node6]
 
-threads = []
 
 for node in nodes:
-    threads.append(Thread(target=node.listen_udp))
-    threads.append(Thread(target=node.listen_tcp))
+    node.run()
 
-for thread in threads:
-    thread.start()
-
-for thread in threads:
-    thread.join()
+for node in nodes:
+    node.stop()
