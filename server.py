@@ -4,13 +4,14 @@ import sys
 import json
 import collections
 import queue
-import threading
 from threading import Thread
-from multiprocessing import Process
 
 
 MESSAGE_TYPE = collections.namedtuple('MessageType', ('client', 'node'))(*('client', 'node'))
 lista_date = queue.Queue()
+
+# mostenirea vine de la object
+
 
 class Nod:
     def __init__(self, ip_multicast, server_multicast, ip_tcp, port_tcp, data, relation):
@@ -20,6 +21,8 @@ class Nod:
         self.port_tcp = port_tcp
         self.data = data
         self.relation = relation
+        
+        
 
     def listen_udp(self):
         # Facem socketul
@@ -57,7 +60,7 @@ class Nod:
             print('datele mele sunt:', data)
 
             sock_udp.sendto(json_obj, address)
-        # sfirsit conexiune udp
+            # sfirsit conexiune udp
 
     def listen_tcp(self):
 
@@ -65,7 +68,6 @@ class Nod:
         sock_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock_tcp.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock_tcp.bind((self.ip_tcp, self.port_tcp))
-
 
         while True:
             sock_tcp.listen(6)
@@ -75,14 +77,14 @@ class Nod:
 
             data = clientsocket.recv(1024)
             data = json.loads(data.decode('utf-8'))
-            type = data.get('type')
+            types = data.get('type')
 
-            if type == MESSAGE_TYPE.node:
+            if types == MESSAGE_TYPE.node:
                 info = self.data.encode('utf-8')
                 clientsocket.send(info)
                 print('am trimis nodului principal mesajul meu')
 
-            if type == MESSAGE_TYPE.client:
+            if types == MESSAGE_TYPE.client:
                 # facem citirea de pe fiecare nod
                 i = 0
                 relatii = len(self.relation)
@@ -117,7 +119,7 @@ class Nod:
 
                     # atit timp cit avem date in lista le trimitem clientului
                     # pentru testare trimitem mesajul primit de la nod imediat clientului
-                    #if lista_date:
+                    # if lista_date:
 
                     m = lista_date.get()
                     # print(m)   # comentat de radu
@@ -131,25 +133,23 @@ class Nod:
             else:
                 clientsocket.close()
 
+
 # initiem nodurile
 node1 = Nod('224.3.29.71', ('', 10000), '127.0.0.1', 9991, 'node1', [('127.0.0.2', 9992), ('127.0.0.6', 9996)])
-node2 = Nod('224.3.29.71', ('', 10000), '127.0.0.2', 9992, 'node2', [('127.0.0.1', 9991), ('127.0.0.3', 9993), ('127.0.0.6', 9996), ('127.0.0.5', 9995)])
+node2 = Nod('224.3.29.71', ('', 10000), '127.0.0.2', 9992, 'node2', [('127.0.0.1', 9991), ('127.0.0.3', 9993),
+                                                                     ('127.0.0.6', 9996), ('127.0.0.5', 9995)])
 node3 = Nod('224.3.29.71', ('', 10000), '127.0.0.3', 9993, 'node3', [('127.0.0.2', 9992)])
 node4 = Nod('224.3.29.71', ('', 10000), '127.0.0.4', 9994, 'node4', [])
 node5 = Nod('224.3.29.71', ('', 10000), '127.0.0.5', 9995, 'node5', [('127.0.0.2', 9992)])
 node6 = Nod('224.3.29.71', ('', 10000), '127.0.0.6', 9996, 'node6', [('127.0.0.1', 9991), ('127.0.0.2', 9992)])
 
-# node1.listen_udp()
-
 nodes = [node1, node2, node3, node4, node5, node6]
 
 threads = []
 
-
 for node in nodes:
-    threads.append(Thread(target=Nod.listen_udp, args=()))
-    threads.append(Thread(target=Nod.listen_tcp, args=()))
-    #threads.append(Thread(target=Nod.listen_tcp))
+    threads.append(Thread(target=node.listen_udp))
+    threads.append(Thread(target=node.listen_tcp))
 
 for thread in threads:
     thread.start()
